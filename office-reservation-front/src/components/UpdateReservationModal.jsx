@@ -15,7 +15,7 @@ export default function UpdateReservationModal({ reservation, onClose }) {
       return;
     }
     if (startTime >= endTime) {
-      setError("시작 시간은 종료 시간보다 이전이어야 합니다.");
+      setError("시작 시간은 종료 시간보다 빨라야 합니다.");
       return;
     }
     setLoading(true);
@@ -26,7 +26,7 @@ export default function UpdateReservationModal({ reservation, onClose }) {
       });
       onClose();
     } catch (err) {
-      setError(err.response?.data?.message || "수정에 실패했습니다.");
+      setError(err.response?.data?.message || "예약 수정에 실패했습니다.");
     } finally {
       setLoading(false);
     }

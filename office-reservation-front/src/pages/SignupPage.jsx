@@ -1,5 +1,5 @@
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
 import api from "../api/axios";
 
 export default function SignupPage() {
@@ -21,7 +21,7 @@ export default function SignupPage() {
     setError("");
     try {
       await api.post("/auth/signup", form);
-      alert("회원가입이 완료되었습니다!");
+      alert("회원가입이 완료되었습니다.");
       navigate("/login");
     } catch (err) {
       setError(err.response?.data?.message || "회원가입에 실패했습니다.");
@@ -132,6 +132,7 @@ const styles = {
     border: "1px solid #ddd",
     fontSize: "14px",
     outline: "none",
+    boxSizing: "border-box",
   },
   error: {
     color: "#e74c3c",

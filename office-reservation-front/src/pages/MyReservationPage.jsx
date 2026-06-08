@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import api from "../api/axios";
 import UpdateReservationModal from "../components/UpdateReservationModal";
 
@@ -22,13 +22,14 @@ export default function MyReservationPage() {
       setLoading(false);
     }
   }
+
   const handleCancel = async (id) => {
     if (!window.confirm("예약을 취소하시겠습니까?")) return;
     try {
       await api.delete(`/reservations/${id}`);
       fetchMyReservations();
     } catch (err) {
-      alert(err.response?.data?.message || "취소에 실패했습니다.");
+      alert(err.response?.data?.message || "예약 취소에 실패했습니다.");
     }
   };
 
@@ -63,7 +64,7 @@ export default function MyReservationPage() {
                       color: r.status === "RESERVED" ? "#065f46" : "#6b7280",
                     }}
                   >
-                    {r.status}
+                    {r.status === "RESERVED" ? "예약중" : "취소됨"}
                   </span>
                 </div>
                 <p style={styles.location}>{r.resourceLocation}</p>
