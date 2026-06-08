@@ -19,9 +19,10 @@ import java.util.Date;
 @Component
 public class JwtTokenProvider {
 
-    private final SecretKey key;        // Key → SecretKey
+    private final SecretKey key;
     private final long expiration;
 
+    // 해당 클래스 생성 될 때 토큰 생성
     public JwtTokenProvider(
             @Value("${jwt.secret}") String secret,
             @Value("${jwt.expiration}") long expiration) {
@@ -31,23 +32,26 @@ public class JwtTokenProvider {
     }
 
     // =====================
-    // 토큰 생성
+    // 토큰 생성 - 토큰 내에 사용자 정보 (userId, email, name, role, position) 넣기
     // =====================
     public JwtTokenDto generateToken(User user) {
+
+        // 현재 시간 + 만료 시간 계산
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expiration);
 
         String accessToken = Jwts.builder()
-                .subject(String.valueOf(user.getId()))      // setSubject → subject
+                .subject(String.valueOf(user.getId()))
                 .claim("email", user.getEmail())
                 .claim("name", user.getName())
                 .claim("role", user.getRole().name())
                 .claim("position", user.getPosition().name())
-                .issuedAt(now)                              // setIssuedAt → issuedAt
-                .expiration(expiryDate)                     // setExpiration → expiration
-                .signWith(key)                              // SignatureAlgorithm 제거
-                .compact();
+                .issuedAt(now)
+                .expiration(expiryDate)
+                .signWith(key) //생성자에서 만들어진 암호화 키로 서명
+                .compact();    //문자열로 반환
 
+        //Dto로 포장하여 변환
         return JwtTokenDto.builder()
                 .accessToken(accessToken)
                 .tokenType("Bearer")
@@ -65,23 +69,16 @@ public class JwtTokenProvider {
     public Authentication getAuthentication(String token) {
         Claims claims = parseClaims(token);
 
-        String role = claims.get("role", String.class);
+        String role = claims.get("role", String.class); //role 추출
         SimpleGrantedAuthority authority = new SimpleGrantedAuthority(role);
 
-        Integer userId = Integer.valueOf(claims.getSubject());
+        Integer userId = Integer.valueOf(claims.getSubject()); //userId 추출
 
         return new UsernamePasswordAuthenticationToken(
-                userId,
-                null,
-                Collections.singleton(authority)
+                userId, //로그인한 유저
+                null, //비밀번호 (검증 끝나서 null)
+                Collections.singleton(authority) //authorities 권한 목록
         );
-    }
-
-    // =====================
-    // 토큰 → userId 추출
-    // =====================
-    public Integer getUserId(String token) {
-        return Integer.valueOf(parseClaims(token).getSubject());
     }
 
     // =====================
@@ -89,10 +86,10 @@ public class JwtTokenProvider {
     // =====================
     public boolean validateToken(String token) {
         try {
-            Jwts.parser()                   // parserBuilder() → parser()
-                    .verifyWith(key)        // setSigningKey → verifyWith
+            Jwts.parser()
+                    .verifyWith(key)
                     .build()
-                    .parseSignedClaims(token);  // parseClaimsJws → parseSignedClaims
+                    .parseSignedClaims(token);
             return true;
 
         } catch (SecurityException | MalformedJwtException e) {
@@ -111,10 +108,10 @@ public class JwtTokenProvider {
     // Claims 파싱 (내부 전용)
     // =====================
     private Claims parseClaims(String token) {
-        return Jwts.parser()                // parserBuilder() → parser()
-                .verifyWith(key)            // setSigningKey → verifyWith
+        return Jwts.parser()
+                .verifyWith(key)
                 .build()
-                .parseSignedClaims(token)   // parseClaimsJws → parseSignedClaims
-                .getPayload();              // getBody() → getPayload()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 }
