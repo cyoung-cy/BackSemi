@@ -5,6 +5,25 @@ import api from "../api/axios";
 const getImageSrc = (imageUrl) =>
   imageUrl || "";
 
+const normalizeToHalfHour = (value) => {
+  if (!value) return "";
+
+  const [date, time] = value.split("T");
+  if (!date || !time) return value;
+
+  const [hour, minute] = time.split(":");
+  if (!hour || minute === undefined) return value;
+
+  return `${date}T${hour}:${Number(minute) < 30 ? "00" : "30"}`;
+};
+
+const isHalfHourTime = (value) => {
+  if (!value) return false;
+
+  const minute = value.split("T")[1]?.split(":")[1];
+  return minute === "00" || minute === "30";
+};
+
 export default function ResourcePage() {
   const navigate = useNavigate();
   const [resources, setResources] = useState([]);
@@ -39,6 +58,11 @@ export default function ResourcePage() {
     e.preventDefault();
     setError("");
     setSuccess("");
+
+    if (!isHalfHourTime(form.startTime) || !isHalfHourTime(form.endTime)) {
+      setError("예약 시간은 30분 단위로 선택해주세요.");
+      return;
+    }
 
     if (form.startTime >= form.endTime) {
       setError("시작 시간은 종료 시간보다 빨라야 합니다.");
@@ -195,9 +219,13 @@ export default function ResourcePage() {
                   <input
                     style={styles.input}
                     type="datetime-local"
+                    step="1800"
                     value={form.startTime}
                     onChange={(e) =>
-                      setForm({ ...form, startTime: e.target.value })
+                      setForm({
+                        ...form,
+                        startTime: normalizeToHalfHour(e.target.value),
+                      })
                     }
                     required
                   />
@@ -207,8 +235,14 @@ export default function ResourcePage() {
                   <input
                     style={styles.input}
                     type="datetime-local"
+                    step="1800"
                     value={form.endTime}
-                    onChange={(e) => setForm({ ...form, endTime: e.target.value })}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        endTime: normalizeToHalfHour(e.target.value),
+                      })
+                    }
                     required
                   />
                 </div>

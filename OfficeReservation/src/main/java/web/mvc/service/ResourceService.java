@@ -17,14 +17,12 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true) //이터 변경이 필요한 메서드에만 @Transactional을 따로 붙여서 오버라이드
+@Transactional(readOnly = true) //변경이 필요한 메서드에만 @Transactional을 따로 붙여서 오버라이드
 public class ResourceService {
 
     private final ResourceRepository resourceRepository;
 
-    // =====================
     // 관리자 - 회의실 등록
-    // =====================
     @Transactional
     public RoomResponseDto createRoom(RoomRequestDto dto) {
         validateRoomRequest(dto);
@@ -97,9 +95,7 @@ public class ResourceService {
         resourceRepository.delete(resource);
     }
 
-    // =====================
     // 공통 - 전체 자원 목록 조회
-    // =====================
     public List<Object> getAllResources() {
         List<Resource> resources = resourceRepository.findAll();
 
@@ -129,9 +125,7 @@ public class ResourceService {
         throw new IllegalStateException("알 수 없는 자원 타입입니다.");
     }
 
-    // =====================
     // 검증 메서드
-    // =====================
     private void validateRoomRequest(RoomRequestDto dto) {
         if (dto.getName() == null || dto.getName().isBlank()) {
             throw new IllegalArgumentException("자원명을 입력해주세요.");

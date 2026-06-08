@@ -1,6 +1,25 @@
 import { useState } from "react";
 import api from "../api/axios";
 
+const normalizeToHalfHour = (value) => {
+  if (!value) return "";
+
+  const [date, time] = value.split("T");
+  if (!date || !time) return value;
+
+  const [hour, minute] = time.split(":");
+  if (!hour || minute === undefined) return value;
+
+  return `${date}T${hour}:${Number(minute) < 30 ? "00" : "30"}`;
+};
+
+const isHalfHourTime = (value) => {
+  if (!value) return false;
+
+  const minute = value.split("T")[1]?.split(":")[1];
+  return minute === "00" || minute === "30";
+};
+
 export default function UpdateReservationModal({ reservation, onClose }) {
   const [startTime, setStartTime] = useState(
     reservation.startTime?.slice(0, 16),
@@ -12,6 +31,10 @@ export default function UpdateReservationModal({ reservation, onClose }) {
   const handleUpdate = async () => {
     if (!startTime || !endTime) {
       setError("시작 시간과 종료 시간을 입력해주세요.");
+      return;
+    }
+    if (!isHalfHourTime(startTime) || !isHalfHourTime(endTime)) {
+      setError("예약 시간은 30분 단위로 선택해주세요.");
       return;
     }
     if (startTime >= endTime) {
@@ -51,8 +74,9 @@ export default function UpdateReservationModal({ reservation, onClose }) {
           <input
             style={styles.input}
             type="datetime-local"
+            step="1800"
             value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
+            onChange={(e) => setStartTime(normalizeToHalfHour(e.target.value))}
           />
         </div>
 
@@ -61,8 +85,9 @@ export default function UpdateReservationModal({ reservation, onClose }) {
           <input
             style={styles.input}
             type="datetime-local"
+            step="1800"
             value={endTime}
-            onChange={(e) => setEndTime(e.target.value)}
+            onChange={(e) => setEndTime(normalizeToHalfHour(e.target.value))}
           />
         </div>
 
