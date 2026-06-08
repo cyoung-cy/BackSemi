@@ -17,6 +17,8 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: prod
       SPRING_JWT_SECRET: ${SPRING_JWT_SECRET}
+      JWT_SECRET: ${SPRING_JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-3600000}
       MYSQL_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-office_reservation}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
       MYSQL_USER: ${MYSQL_USER:-office}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
