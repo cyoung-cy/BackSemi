@@ -1,9 +1,10 @@
-import { useNavigate, Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function Navbar() {
   const navigate = useNavigate();
   const userName = localStorage.getItem("userName");
   const userRole = localStorage.getItem("userRole");
+  const isAdmin = userRole === "ROLE_ADMIN";
 
   const handleLogout = () => {
     localStorage.clear();
@@ -13,27 +14,30 @@ export default function Navbar() {
   return (
     <nav style={styles.nav}>
       <div style={styles.left}>
-        <Link to="/" style={styles.logo}>
-          🏢 공유 오피스 예약
+        <Link to={isAdmin ? "/admin" : "/"} style={styles.logo}>
+          공유 오피스 예약
         </Link>
-        <Link to="/" style={styles.navLink}>
-          자원 목록
-        </Link>
-        <Link to="/my-reservations" style={styles.navLink}>
-          내 예약
-        </Link>
-        {userRole === "ROLE_ADMIN" && (
+
+        {isAdmin ? (
           <Link to="/admin" style={styles.adminLink}>
-            관리자
+            관리자 페이지
           </Link>
+        ) : (
+          <>
+            <Link to="/" style={styles.navLink}>
+              자원 목록
+            </Link>
+            <Link to="/my-reservations" style={styles.navLink}>
+              내 예약
+            </Link>
+          </>
         )}
       </div>
+
       <div style={styles.right}>
         <span style={styles.userInfo}>
           {userName}
-          {userRole === "ROLE_ADMIN" && (
-            <span style={styles.adminBadge}>관리자</span>
-          )}
+          {isAdmin && <span style={styles.adminBadge}>관리자</span>}
         </span>
         <button style={styles.logoutBtn} onClick={handleLogout}>
           로그아웃

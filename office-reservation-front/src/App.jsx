@@ -11,6 +11,10 @@ const isLoggedIn = () => !!localStorage.getItem("accessToken");
 const isAdmin = () => localStorage.getItem("userRole") === "ROLE_ADMIN";
 
 const PrivateRoute = ({ children }) => {
+  if (isLoggedIn() && isAdmin()) {
+    return <Navigate to="/admin" />;
+  }
+
   return isLoggedIn() ? (
     <>
       <Navbar />

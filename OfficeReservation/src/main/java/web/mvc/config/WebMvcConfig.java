@@ -1,26 +1,35 @@
 package web.mvc.config;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
-import 
-org.springframework.web.servlet.config.annotation.CorsRegistry;
-import 
-org.springframework.web.servlet.config.annotation.EnableWebMvc;
-import 
-org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-/**
-* WebMvcConfigurer 를 이용해서 @CrossOrigin 글로벌 설정
-* */
 @Configuration
 @EnableWebMvc
 public class WebMvcConfig implements WebMvcConfigurer {
-  @Override
-  public void addCorsMappings(CorsRegistry registry) {
-     registry.addMapping("/**")
-    // .allowedOrigins("http://localhost:5173","http://localhost:4173")
-     //.allowedOrigins("http://43.200.184.113:5173", "http://43.200.184.113:4173")
-      //.allowedOrigins("http://52.79.231.103", "http://52.79.231.103:80")
-      .allowedOrigins("http://cyoung.o-r.kr", "https://cyoung.o-r.kr")
-     .allowedMethods("OPTIONS","GET","POST","PUT","DELETE");
-  }
+
+    @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:3000}")
+    private String allowedOrigins;
+
+    @Value("${file.upload.path:/app/uploads/images/resources/}")
+    private String imageDir;
+
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/**")
+                .allowedOrigins(allowedOrigins.split(","))
+                .allowedMethods("OPTIONS", "GET", "POST", "PUT", "DELETE")
+                .allowedHeaders("*")
+                .allowCredentials(true);
+    }
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        String normalizedPath = imageDir.endsWith("/") ? imageDir : imageDir + "/";
+        registry.addResourceHandler("/images/resources/**")
+                .addResourceLocations("file:" + normalizedPath);
+    }
 }

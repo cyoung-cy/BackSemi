@@ -2,6 +2,7 @@ package web.mvc.config;
 
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -28,6 +29,9 @@ public class SecurityConfig {
 
     private final JwtTokenProvider tokenProvider;
 
+    @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:3000}")
+    private String allowedOrigins;
+
     // =====================
     // Security Filter Chain
     // =====================
@@ -46,6 +50,8 @@ public class SecurityConfig {
 
             // 4. URL별 접근 권한 설정
             .authorizeHttpRequests(auth -> auth
+
+                    .requestMatchers("/images/**").permitAll()
 
                     // 인증 없이 허용 (로그인, Swagger)
                     .requestMatchers(
@@ -99,10 +105,7 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         // 허용할 Origin (React 개발 서버)
-        config.setAllowedOrigins(List.of(
-                "http://localhost:3000",
-                "http://localhost:5173"
-        ));
+        config.setAllowedOrigins(List.of(allowedOrigins.split(",")));
 
         // 허용할 HTTP 메서드
         config.setAllowedMethods(List.of(

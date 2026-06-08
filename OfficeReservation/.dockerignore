@@ -1,0 +1,6 @@
+target
+.git
+.idea
+.gradle
+*.log
+src/main/resources/static/images/resources

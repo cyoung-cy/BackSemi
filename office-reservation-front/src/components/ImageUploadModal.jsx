@@ -71,7 +71,7 @@ export default function ImageUploadModal({ resource, onClose }) {
             <img src={preview} alt="preview" style={styles.previewImg} />
           ) : resource.imageUrl ? (
             <img
-              src={`http://localhost:8080${resource.imageUrl}`}
+              src={resource.imageUrl}
               alt={resource.name}
               style={styles.previewImg}
             />

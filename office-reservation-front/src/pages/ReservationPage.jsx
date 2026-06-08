@@ -27,7 +27,7 @@ export default function ReservationPage() {
     };
 
     fetchReservations();
-  }, []);
+  }, [navigate]);
 
   const handleCancel = async (id) => {
     if (!window.confirm("예약을 취소하시겠습니까?")) return;
