@@ -19,7 +19,7 @@ services:
       SPRING_JWT_SECRET: ${SPRING_JWT_SECRET}
       JWT_SECRET: ${SPRING_JWT_SECRET}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-3600000}
-      MYSQL_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-office_reservation}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      MYSQL_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-office_reservation}?serverTimezone=Asia/Seoul&useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci
       MYSQL_USER: ${MYSQL_USER:-office}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       FILE_UPLOAD_PATH: /app/uploads/images/resources/
