@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../api/axios";
 import UpdateReservationModal from "../components/UpdateReservationModal";
+import { formatReservationTime } from "../utils/dateTime";
 
 export default function MyReservationPage() {
   const [reservations, setReservations] = useState([]);
@@ -33,7 +34,7 @@ export default function MyReservationPage() {
     }
   };
 
-  const formatTime = (t) => t?.replace("T", " ").slice(0, 16);
+  const formatTime = (t) => formatReservationTime(t);
 
   return (
     <div style={styles.container}>
@@ -69,7 +70,7 @@ export default function MyReservationPage() {
                 </div>
                 <p style={styles.location}>{r.resourceLocation}</p>
                 <p style={styles.time}>
-                  {formatTime(r.startTime)} ~ {formatTime(r.endTime)?.slice(11)}
+                  {formatTime(r.startTime)} ~ {formatTime(r.endTime).slice(11)}
                 </p>
               </div>
 

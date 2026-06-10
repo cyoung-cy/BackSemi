@@ -36,7 +36,7 @@ public class ReservationService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 유저입니다."));
 
-        // 기존 findById → 락을 거는 findByIdWithLock 으로 교체
+        // 락을 거는 findByIdWithLock
         // A가 이 자원에 락을 걸면 B는 A 트랜잭션이 끝날 때까지 여기서 대기
         Resource resource = resourceRepository.findByIdWithLock(dto.getResourceId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 자원입니다."));

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import api from "../api/axios";
+import { toDateTimeInputValue } from "../utils/dateTime";
 
 const normalizeToHalfHour = (value) => {
   if (!value) return "";
@@ -22,9 +23,9 @@ const isHalfHourTime = (value) => {
 
 export default function UpdateReservationModal({ reservation, onClose }) {
   const [startTime, setStartTime] = useState(
-    reservation.startTime?.slice(0, 16),
+    toDateTimeInputValue(reservation.startTime),
   );
-  const [endTime, setEndTime] = useState(reservation.endTime?.slice(0, 16));
+  const [endTime, setEndTime] = useState(toDateTimeInputValue(reservation.endTime));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 

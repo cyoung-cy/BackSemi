@@ -23,7 +23,7 @@ public class ReservationController {
 
     // 예약 생성
     // userId는 JWT 토큰에서 추출 예정 (현재는 임시로 @RequestHeader로 받음)
-    // JWT 필터 완성 후 SecurityContext에서 꺼내는 방식으로 교체
+    // JWT 필터 완성 후 SecurityContext에서 꺼내는 방식
     @PostMapping
     public ResponseEntity<ApiResponse<?>> createReservation(
             Authentication authentication,
