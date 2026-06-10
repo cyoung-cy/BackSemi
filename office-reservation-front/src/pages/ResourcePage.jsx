@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
+import { toDateTimeInputValue } from "../utils/dateTime";
 
 const getImageSrc = (imageUrl) =>
   imageUrl || "";
@@ -24,6 +25,67 @@ const isHalfHourTime = (value) => {
   return minute === "00" || minute === "30";
 };
 
+const toDateParam = (date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+const roundUpToHalfHour = (date) => {
+  const rounded = new Date(date);
+  rounded.setSeconds(0, 0);
+
+  const minutes = rounded.getMinutes();
+  if (minutes === 0 || minutes === 30) return rounded;
+
+  if (minutes < 30) {
+    rounded.setMinutes(30);
+  } else {
+    rounded.setHours(rounded.getHours() + 1, 0);
+  }
+
+  return rounded;
+};
+
+const toDate = (value) => {
+  const inputValue = toDateTimeInputValue(value);
+  return inputValue ? new Date(inputValue) : null;
+};
+
+const formatClock = (date) =>
+  `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+
+const getTodayAvailableSlots = (reservations) => {
+  const now = new Date();
+  const dayEnd = new Date(now);
+  dayEnd.setHours(24, 0, 0, 0);
+
+  let cursor = roundUpToHalfHour(now);
+  const reservedRanges = reservations
+    .map((reservation) => ({
+      start: toDate(reservation.startTime),
+      end: toDate(reservation.endTime),
+    }))
+    .filter(({ start, end }) => start && end && end > cursor && start < dayEnd)
+    .map(({ start, end }) => ({
+      start: start < cursor ? cursor : start,
+      end: end > dayEnd ? dayEnd : end,
+    }))
+    .sort((a, b) => a.start - b.start);
+
+  const slots = [];
+
+  reservedRanges.forEach(({ start, end }) => {
+    if (start > cursor && start - cursor >= 30 * 60 * 1000) {
+      slots.push({ start: cursor, end: start });
+    }
+    if (end > cursor) cursor = end;
+  });
+
+  if (dayEnd > cursor && dayEnd - cursor >= 30 * 60 * 1000) {
+    slots.push({ start: cursor, end: dayEnd });
+  }
+
+  return slots.map(({ start, end }) => `${formatClock(start)} ~ ${formatClock(end)}`);
+};
+
 export default function ResourcePage() {
   const navigate = useNavigate();
   const [resources, setResources] = useState([]);
@@ -32,6 +94,10 @@ export default function ResourcePage() {
   const [form, setForm] = useState({ startTime: "", endTime: "" });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+
+  const todayParam = toDateParam(new Date());
 
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
@@ -53,6 +119,27 @@ export default function ResourcePage() {
 
     fetchResources();
   }, [navigate]);
+
+  useEffect(() => {
+    if (!selectedResource) return;
+
+    const fetchTodayAvailability = async () => {
+      setAvailabilityLoading(true);
+      try {
+        const res = await api.get(`/reservations/resource/${selectedResource.id}`, {
+          params: { date: todayParam },
+        });
+        setAvailableSlots(getTodayAvailableSlots(res.data.data || []));
+      } catch (err) {
+        console.error(err);
+        setAvailableSlots([]);
+      } finally {
+        setAvailabilityLoading(false);
+      }
+    };
+
+    fetchTodayAvailability();
+  }, [selectedResource, todayParam]);
 
   const handleReserve = async (e) => {
     e.preventDefault();
@@ -78,6 +165,7 @@ export default function ResourcePage() {
       setSuccess("예약이 완료되었습니다.");
       setSelectedResource(null);
       setForm({ startTime: "", endTime: "" });
+      setAvailableSlots([]);
     } catch (err) {
       setError(err.response?.data?.message || "예약에 실패했습니다.");
     }
@@ -87,6 +175,7 @@ export default function ResourcePage() {
     setSelectedResource(null);
     setError("");
     setForm({ startTime: "", endTime: "" });
+    setAvailableSlots([]);
   };
 
   if (loading) return <div style={styles.loading}>불러오는 중...</div>;
@@ -152,7 +241,7 @@ export default function ResourcePage() {
             </div>
 
             <div style={styles.reservePanel}>
-              <p style={styles.panelLabel}>오늘 예약 가능</p>
+              <p style={styles.panelLabel}>예약 시간 확인</p>
               <button
                 style={styles.reserveBtn}
                 onClick={() => {
@@ -210,6 +299,23 @@ export default function ResourcePage() {
                     <span>{selectedResource.modelName}</span>
                     <span>{selectedResource.serialNumber}</span>
                   </>
+                )}
+              </div>
+
+              <div style={styles.availabilityBox}>
+                <p style={styles.availabilityTitle}>오늘 예약 가능 시간대</p>
+                {availabilityLoading ? (
+                  <p style={styles.availabilityEmpty}>확인 중...</p>
+                ) : availableSlots.length > 0 ? (
+                  <div style={styles.slotList}>
+                    {availableSlots.map((slot) => (
+                      <span key={slot} style={styles.slot}>
+                        {slot}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={styles.availabilityEmpty}>오늘 예약 가능한 시간이 없습니다.</p>
                 )}
               </div>
 
@@ -472,6 +578,38 @@ const styles = {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
     gap: "12px",
+  },
+  availabilityBox: {
+    border: "1px solid #dbeafe",
+    backgroundColor: "#eff6ff",
+    borderRadius: "8px",
+    padding: "12px",
+    marginBottom: "14px",
+  },
+  availabilityTitle: {
+    margin: "0 0 8px",
+    color: "#1d4ed8",
+    fontSize: "12px",
+    fontWeight: "bold",
+  },
+  slotList: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "6px",
+  },
+  slot: {
+    border: "1px solid #bfdbfe",
+    backgroundColor: "#fff",
+    borderRadius: "6px",
+    padding: "5px 8px",
+    color: "#1e3a8a",
+    fontSize: "12px",
+    fontWeight: "bold",
+  },
+  availabilityEmpty: {
+    margin: 0,
+    color: "#64748b",
+    fontSize: "12px",
   },
   field: {
     display: "flex",
