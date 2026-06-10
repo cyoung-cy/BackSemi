@@ -6,6 +6,42 @@ import { toDateTimeInputValue } from "../utils/dateTime";
 const getImageSrc = (imageUrl) =>
   imageUrl || "";
 
+const filterOptions = [
+  { key: "ALL", label: "전체" },
+  { key: "ROOM", label: "회의실" },
+  { key: "EQUIPMENT", label: "장비" },
+  { key: "AVAILABLE_FOR_ME", label: "내 직급으로 예약 가능한 자원" },
+];
+
+const positionRanks = {
+  ASSISTANT: 0,
+  MANAGER: 1,
+  EXECUTIVE: 2,
+};
+
+const getUserPositionFromToken = () => {
+  const token = localStorage.getItem("accessToken");
+  const payload = token?.split(".")[1];
+  if (!payload) return "";
+
+  try {
+    return JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/"))).position || "";
+  } catch {
+    return "";
+  }
+};
+
+const getUserPosition = () =>
+  localStorage.getItem("userPosition") || getUserPositionFromToken();
+
+const canReserveByPosition = (resource, userPosition) => {
+  const userRank = positionRanks[userPosition];
+  const minRank = positionRanks[resource.minPosition];
+
+  if (userRank === undefined || minRank === undefined) return false;
+  return userRank >= minRank;
+};
+
 const normalizeToHalfHour = (value) => {
   if (!value) return "";
 
@@ -28,22 +64,6 @@ const isHalfHourTime = (value) => {
 const toDateParam = (date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
-const roundUpToHalfHour = (date) => {
-  const rounded = new Date(date);
-  rounded.setSeconds(0, 0);
-
-  const minutes = rounded.getMinutes();
-  if (minutes === 0 || minutes === 30) return rounded;
-
-  if (minutes < 30) {
-    rounded.setMinutes(30);
-  } else {
-    rounded.setHours(rounded.getHours() + 1, 0);
-  }
-
-  return rounded;
-};
-
 const toDate = (value) => {
   const inputValue = toDateTimeInputValue(value);
   return inputValue ? new Date(inputValue) : null;
@@ -52,38 +72,25 @@ const toDate = (value) => {
 const formatClock = (date) =>
   `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 
-const getTodayAvailableSlots = (reservations) => {
+const getTodayUnavailableSlots = (reservations) => {
   const now = new Date();
+  const dayStart = new Date(now);
+  dayStart.setHours(0, 0, 0, 0);
   const dayEnd = new Date(now);
   dayEnd.setHours(24, 0, 0, 0);
 
-  let cursor = roundUpToHalfHour(now);
-  const reservedRanges = reservations
+  return reservations
     .map((reservation) => ({
       start: toDate(reservation.startTime),
       end: toDate(reservation.endTime),
     }))
-    .filter(({ start, end }) => start && end && end > cursor && start < dayEnd)
+    .filter(({ start, end }) => start && end && end > dayStart && start < dayEnd)
     .map(({ start, end }) => ({
-      start: start < cursor ? cursor : start,
+      start: start < dayStart ? dayStart : start,
       end: end > dayEnd ? dayEnd : end,
     }))
-    .sort((a, b) => a.start - b.start);
-
-  const slots = [];
-
-  reservedRanges.forEach(({ start, end }) => {
-    if (start > cursor && start - cursor >= 30 * 60 * 1000) {
-      slots.push({ start: cursor, end: start });
-    }
-    if (end > cursor) cursor = end;
-  });
-
-  if (dayEnd > cursor && dayEnd - cursor >= 30 * 60 * 1000) {
-    slots.push({ start: cursor, end: dayEnd });
-  }
-
-  return slots.map(({ start, end }) => `${formatClock(start)} ~ ${formatClock(end)}`);
+    .sort((a, b) => a.start - b.start)
+    .map(({ start, end }) => `${formatClock(start)} ~ ${formatClock(end)}`);
 };
 
 export default function ResourcePage() {
@@ -94,10 +101,19 @@ export default function ResourcePage() {
   const [form, setForm] = useState({ startTime: "", endTime: "" });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [availableSlots, setAvailableSlots] = useState([]);
-  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [unavailableSlots, setUnavailableSlots] = useState([]);
+  const [unavailabilityLoading, setUnavailabilityLoading] = useState(false);
+  const [resourceFilter, setResourceFilter] = useState("ALL");
 
   const todayParam = toDateParam(new Date());
+  const userPosition = getUserPosition();
+  const filteredResources = resources.filter((resource) => {
+    if (resourceFilter === "ALL") return true;
+    if (resourceFilter === "AVAILABLE_FOR_ME") {
+      return canReserveByPosition(resource, userPosition);
+    }
+    return resource.dtype === resourceFilter;
+  });
 
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
@@ -123,22 +139,22 @@ export default function ResourcePage() {
   useEffect(() => {
     if (!selectedResource) return;
 
-    const fetchTodayAvailability = async () => {
-      setAvailabilityLoading(true);
+    const fetchTodayUnavailableSlots = async () => {
+      setUnavailabilityLoading(true);
       try {
         const res = await api.get(`/reservations/resource/${selectedResource.id}`, {
           params: { date: todayParam },
         });
-        setAvailableSlots(getTodayAvailableSlots(res.data.data || []));
+        setUnavailableSlots(getTodayUnavailableSlots(res.data.data || []));
       } catch (err) {
         console.error(err);
-        setAvailableSlots([]);
+        setUnavailableSlots([]);
       } finally {
-        setAvailabilityLoading(false);
+        setUnavailabilityLoading(false);
       }
     };
 
-    fetchTodayAvailability();
+    fetchTodayUnavailableSlots();
   }, [selectedResource, todayParam]);
 
   const handleReserve = async (e) => {
@@ -165,7 +181,7 @@ export default function ResourcePage() {
       setSuccess("예약이 완료되었습니다.");
       setSelectedResource(null);
       setForm({ startTime: "", endTime: "" });
-      setAvailableSlots([]);
+      setUnavailableSlots([]);
     } catch (err) {
       setError(err.response?.data?.message || "예약에 실패했습니다.");
     }
@@ -175,7 +191,7 @@ export default function ResourcePage() {
     setSelectedResource(null);
     setError("");
     setForm({ startTime: "", endTime: "" });
-    setAvailableSlots([]);
+    setUnavailableSlots([]);
   };
 
   if (loading) return <div style={styles.loading}>불러오는 중...</div>;
@@ -191,8 +207,28 @@ export default function ResourcePage() {
 
       {success && <p style={styles.success}>{success}</p>}
 
+      <div style={styles.filterBar} aria-label="자원 필터">
+        {filterOptions.map((option) => {
+          const active = resourceFilter === option.key;
+
+          return (
+            <button
+              key={option.key}
+              type="button"
+              style={{
+                ...styles.filterBtn,
+                ...(active ? styles.filterBtnActive : {}),
+              }}
+              onClick={() => setResourceFilter(option.key)}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+
       <div style={styles.resourceList}>
-        {resources.map((resource) => (
+        {filteredResources.map((resource) => (
           <article key={resource.id} style={styles.resourceCard}>
             <div style={styles.resourceImageBox}>
               {resource.imageUrl ? (
@@ -256,6 +292,10 @@ export default function ResourcePage() {
         ))}
       </div>
 
+      {filteredResources.length === 0 && (
+        <p style={styles.empty}>조건에 맞는 자원이 없습니다.</p>
+      )}
+
       {selectedResource && (
         <div style={styles.overlay}>
           <div style={styles.bookingModal}>
@@ -303,19 +343,19 @@ export default function ResourcePage() {
               </div>
 
               <div style={styles.availabilityBox}>
-                <p style={styles.availabilityTitle}>오늘 예약 가능 시간대</p>
-                {availabilityLoading ? (
+                <p style={styles.availabilityTitle}>오늘 예약 불가 시간대</p>
+                {unavailabilityLoading ? (
                   <p style={styles.availabilityEmpty}>확인 중...</p>
-                ) : availableSlots.length > 0 ? (
+                ) : unavailableSlots.length > 0 ? (
                   <div style={styles.slotList}>
-                    {availableSlots.map((slot) => (
+                    {unavailableSlots.map((slot) => (
                       <span key={slot} style={styles.slot}>
                         {slot}
                       </span>
                     ))}
                   </div>
                 ) : (
-                  <p style={styles.availabilityEmpty}>오늘 예약 가능한 시간이 없습니다.</p>
+                  <p style={styles.availabilityEmpty}>오늘 예약된 시간이 없습니다.</p>
                 )}
               </div>
 
@@ -404,10 +444,37 @@ const styles = {
     marginBottom: "16px",
     fontWeight: "bold",
   },
+  filterBar: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "8px",
+    marginBottom: "18px",
+  },
+  filterBtn: {
+    padding: "8px 13px",
+    backgroundColor: "#fff",
+    color: "#475569",
+    border: "1px solid #cbd5e1",
+    borderRadius: "8px",
+    fontSize: "13px",
+    fontWeight: "bold",
+    cursor: "pointer",
+  },
+  filterBtnActive: {
+    backgroundColor: "#2563eb",
+    color: "#fff",
+    borderColor: "#2563eb",
+  },
   resourceList: {
     display: "flex",
     flexDirection: "column",
     gap: "14px",
+  },
+  empty: {
+    margin: "40px 0",
+    color: "#64748b",
+    textAlign: "center",
+    fontSize: "14px",
   },
   resourceCard: {
     display: "grid",
@@ -580,15 +647,15 @@ const styles = {
     gap: "12px",
   },
   availabilityBox: {
-    border: "1px solid #dbeafe",
-    backgroundColor: "#eff6ff",
+    border: "1px solid #fecaca",
+    backgroundColor: "#fef2f2",
     borderRadius: "8px",
     padding: "12px",
     marginBottom: "14px",
   },
   availabilityTitle: {
     margin: "0 0 8px",
-    color: "#1d4ed8",
+    color: "#b91c1c",
     fontSize: "12px",
     fontWeight: "bold",
   },
@@ -598,11 +665,11 @@ const styles = {
     gap: "6px",
   },
   slot: {
-    border: "1px solid #bfdbfe",
+    border: "1px solid #fecaca",
     backgroundColor: "#fff",
     borderRadius: "6px",
     padding: "5px 8px",
-    color: "#1e3a8a",
+    color: "#b91c1c",
     fontSize: "12px",
     fontWeight: "bold",
   },

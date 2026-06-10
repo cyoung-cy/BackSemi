@@ -19,6 +19,7 @@ export default function LoginPage() {
       localStorage.setItem("accessToken", res.data.data.accessToken);
       localStorage.setItem("userName", res.data.data.name);
       localStorage.setItem("userRole", res.data.data.role);
+      localStorage.setItem("userPosition", res.data.data.position);
       navigate(res.data.data.role === "ROLE_ADMIN" ? "/admin" : "/");
     } catch (err) {
       setError(err.response?.data?.message || "로그인에 실패했습니다.");
